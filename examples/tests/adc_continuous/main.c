@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <timer.h>
 
 #include <adc.h>
 #include <alarm.h>
@@ -51,6 +52,7 @@ static void continuous_sample_cb(uint8_t channel,
     // start buffered sampling
     printf("Beginning buffered sampling on channel %d at %d Hz\n",
            ADC_CHANNEL, ADC_HIGHSPEED_FREQUENCY);
+    delay_ms(1000);
     err = adc_continuous_buffered_sample(ADC_CHANNEL, ADC_HIGHSPEED_FREQUENCY);
     if (err < TOCK_SUCCESS) {
       printf("continuous buffered sample error: %d\n", err);

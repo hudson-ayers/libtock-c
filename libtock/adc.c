@@ -270,6 +270,8 @@ int adc_sample_buffer_sync(uint8_t channel, uint32_t frequency, uint16_t* buffer
   if (result.buffer != buffer) {
     return TOCK_FAIL;
   }
+  int err2 = adc_stop_sampling();
+  if (err2 < TOCK_SUCCESS) printf("Failed to stop sampling\n");
 
   return result.error;
 }

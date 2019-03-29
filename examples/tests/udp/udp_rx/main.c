@@ -68,6 +68,8 @@ int main(void) {
   udp_bind(handle, &addr, BUF_BIND_CFG);
 
   ieee802154_set_address(49138); // Corresponds to the dst mac addr set in kernel
+  //unsigned char my_mac[8] = {0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a};
+  //ieee802154_set_address_long(&my_mac[0]);
   ieee802154_set_pan(0xABCD);
   ieee802154_config_commit();
   ieee802154_up();
@@ -98,7 +100,7 @@ int main(void) {
    * However, this app tests receiving for 10 seconds
    * then closing the connection, so we include a busy wait for that
    * reason. */
-  delay_ms(30000);
+  delay_ms(100000);
   ssize_t err = udp_close(handle);
   if (err < 0) {
     printf("Error closing socket\n");

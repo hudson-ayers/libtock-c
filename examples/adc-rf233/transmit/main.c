@@ -42,7 +42,7 @@ static void adc_cb(int callback_type,
 }
 */
 #define ADC_SAMPLES 1000
-static adc_buffer[ADC_SAMPLES];
+static uint16_t adc_buffer[ADC_SAMPLES];
 int main(void) {
   //printf("[IPv6_Sense] Starting IPv6 Sensors App.\n");
   //printf("[IPv6_Sense] Sensors will be sampled and transmitted.\n");
@@ -80,8 +80,8 @@ int main(void) {
   tock_timer_t timer;
   timer_every(5000, timer_cb, NULL, &timer);
 
-  uint32_t length = ADC_SAMPLES;
-  unsigned buffer_idx = 0;
+  uint16_t length = ADC_SAMPLES;
+  //uint16_t buffer_idx = 0;
   //unsigned num_samples = 1;
   //uint16_t avg_buffer[num_samples];
   /*int err = adc_sample_buffer_sync(0, 7000, adc_buffer, length);
@@ -97,12 +97,12 @@ int main(void) {
     //}
     yield_for(&adc_sample);
     adc_sample = false;
-    printf("About to sample...\n");
-    int err = adc_sample_buffer_sync(0, 3500, adc_buffer, length);
+    //printf("About to sample...\n");
+    int err = adc_sample_buffer_sync(0, 7000, adc_buffer, length);
     if (err < 0) {
-        printf("Error sampling ADC: %d\n", err);
+        //printf("Error sampling ADC: %d\n", err);
     } else {
-      printf("sample: %d\n", adc_buffer[0]);
+      //printf("first sample: %d\n", adc_buffer[0]);
     }
 
     // Begin computation of average

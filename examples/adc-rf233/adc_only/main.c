@@ -16,14 +16,14 @@ static void timer_cb (__attribute__ ((unused)) int arg0,
 static uint16_t adc_buffer[ADC_SAMPLES];
 int main(void) {
   tock_timer_t timer;
-  timer_every(5000, timer_cb, NULL, &timer);
+  timer_every(3000, timer_cb, NULL, &timer);
 
   uint16_t length = ADC_SAMPLES;
   while (1) {
     yield_for(&adc_sample);
     adc_sample = false;
     //printf("About to sample...\n");
-    int err = adc_sample_buffer_sync(0, 7000, adc_buffer, length);
+    int err = adc_sample_buffer_sync(0, 31500, adc_buffer, length);
     if (err < 0) {
         //printf("Error sampling ADC: %d\n", err);
     } else {

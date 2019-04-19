@@ -27,14 +27,6 @@ const uint32_t FREQS[7] = {25,100,500,1000,2000,5000,10000};
 #define ADC_SAMPLES 1000
 static uint16_t adc_buffer[ADC_SAMPLES];
 
-/* RSA */
-int x_rsa, y_rsa, n_rsa, t_rsa, i_rsa, flag_rsa;
-long int e_rsa[ADC_SAMPLES], d_rsa[ADC_SAMPLES], temp_rsa[ADC_SAMPLES], j_rsa, m_rsa[ADC_SAMPLES], en_rsa[ADC_SAMPLES];
-int prime(long int);
-void encryption_key(); 
-long int cd(long int);
-void encrypt(); 
-
 int main(void) {
   if (DEBUG) {
     printf("Starting Power Clocks Test App.\n");
@@ -142,22 +134,21 @@ int main(void) {
      *--------------------------*/
 
     char encrypted_adc_buffer[ADC_SAMPLES];
-    for (i = 0; (i < 100 && adc_buffer[i] != '\0'); i++)
-        encrypted_adc_buffer[i] = adc_buffer[i] + 3; 
+    compute_caesar_cypher(adc_buffer, ADC_SAMPLES, &encrypted_adc_buffer); 
     
     /*----------------*
      * RSA Encryption *
      *----------------*/
 
-    x_rsa = 7; // arbitrary prime
-    y_rsa = 13; // arbitrary prime 
+    compute_rsa(adc_buffer, ADC_SAMPLES); 
 
-    for (i_rsa = 0; adc_buffer[i] != NULL; i_rsa++)
-        m_rsa[i_rsa] = adc_buffer[i_rsa];
-    n_rsa = x_rsa * y_rsa;
-    t_rsa = (x_rsa-1) * (y_rsa-1);
-    encryption_key();
-    encrypt();
+    /*----------------*
+     * 1D Convolution *
+     *----------------*/
+
+    unsigned kernel_length = 5;
+    uint16_t result_1dconv[ADC_SAMPLES + kernel_length - 1]; 
+    compute_1dconv(adc_buffer, ADC_SAMPLES, &result_1dconv); 
     
     /*---------*/
     
@@ -218,66 +209,3 @@ int main(void) {
     }
   }
 }
-
-/***** Helper functions for RSA *****/
-
-int prime(long int pr) {
-    int i;
-    j_rsa = sqrt(pr);
-    for(i = 2; i <= j_rsa; i++) {
-        if (pr%i_rsa == 0)
-            return 0;
-    }
-    return 1;
-}
-
-// function to generate encryption key
-void encryption_key() {
-    int k = 0; 
-    for (i_rsa = 2; i_rsa < t_rsa; i_rsa++) {
-        if (t_rsa % i_rsa == 0)
-            continue; 
-        flag_rsa = prime(i_rsa);
-        if (flag_rsa == 1 && i_rsa != x_rsa && i_rsa != y_rsa) {
-            e_rsa[k] = i_rsa;
-            flag_rsa = cd(e_rsa[k]);
-            if (flag_rsa > 0) {
-                d_rsa[k] = flag_rsa;
-                k++;
-            }
-            if (k == 99)
-                break;
-        }
-    }
-}
-
-long int cd(long int a) {
-    long int k = 1; 
-    while (1) {
-        k = k + t_rsa;
-        if (k % a == 0)
-            return (k/a); 
-    }
-}
-
-// function to encrypt the message
-void encrypt() {
-    long int pt, ct, key = e_rsa[0], k, len;
-    i_rsa = 0; 
-    len = ADC_SAMPLES;
-    while(i_rsa != len) {
-        pt = m_rsa[i_rsa];
-        pt = pt - 96; 
-        k = 1; 
-        for (j_rsa = 0; j_rsa < key; j_rsa++) {
-            k = k * pt;
-            k = k % n_rsa; 
-        }
-        temp_rsa[i_rsa] = k;
-        ct = k + 96; 
-        en_rsa[i_rsa] = ct; 
-        i_rsa++;
-    }
-    en_rsa[i_rsa] = -1;
-}
-

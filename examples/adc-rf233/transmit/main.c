@@ -75,7 +75,7 @@ int main(void) {
   int fft_buf[16];
   int fft_mag[8];
   float avg_fft_mag[8]; //For each frequency bin, keep moving average of magnitude
-  //clock_set(RCFAST4M);
+  clock_set(RCFAST4M);
   while (1) {
     yield_for(&adc_sample);
     timer_cancel(&timer);
@@ -95,16 +95,18 @@ int main(void) {
     //uint32_t before = alarm_read();
     // Begin computation of average
     // Basic Average code (proxy for magnitude of signal)
-    long sum = 0;
     int i;
+    /*
+    long sum = 0;
     for (i=0; i<length; i++) {
-        adc_buffer[i] = adc_buffer[i] * 2 - 200; // Mock conversion to real-world units
+        //adc_buffer[i] = adc_buffer[i] * 2 - 200; // Mock conversion to real-world units
         sum += adc_buffer[i];
     }
     avg_buffer[buffer_idx++] = ((double)sum)/length;
     if (DEBUG) {
       printf("Average of last %d samples: %f\n", ADC_SAMPLES, avg_buffer[buffer_idx - 1]);
-    }
+    }*/
+    buffer_idx++;
 
     // Begin fft computation on sets of 16 samples
     int k;
@@ -115,7 +117,7 @@ int main(void) {
       fft(fft_buf, fft_mag);
       int l;
       // For each returned fft magnitude, update the moving average for that magnitude bin
-      for (l=2; l<8; l++) {
+      for (l=3; l<8; l++) {
         avg_fft_mag[l] = movingAvg(avg_fft_mag[l], k, fft_mag[l]);
       }
     }

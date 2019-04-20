@@ -9,25 +9,33 @@
 #include <console.h>
 #include <timer.h>
 #include <tock.h>
+#include "gpio.h"
 
 #include <internal/nonvolatile_storage.h>
 #include "ninedof.h"
 
-static bool timer_interval;
-static void timer_cb (__attribute__ ((unused)) int arg0,
-                      __attribute__ ((unused)) int arg1,
-                      __attribute__ ((unused)) int arg2,
-                      __attribute__ ((unused)) void* userdata) {
-    timer_interval = true;
+static bool gpio_interrupt;
+
+static void gpio_cb (int pin_num,
+                     int pin_val,
+                     __attribute__ ((unused)) int unused,
+                     __attribute__ ((unused)) void* userdata) {
+
+  gpio_disable_interrupt(0);
+  gpio_interrupt = true;
 }
 
 const double g = -9.8;
 
-// Step counter app
-// TODO get sqrt working
 int main(void) {
-  printf("Step counter init\n");
-  unsigned num_measurements = 100;
+  printf("Movement tracker\n");
+
+  // GPIO input from proximity sensor or door open/close sensor
+  gpio_interrupt_callback(gpio_cb, NULL);
+  gpio_enable_input(0, PullDown);
+  gpio_enable_interrupt(0, Change);
+
+  unsigned num_measurements = 10;
   double accel_mags[num_measurements];
 
   uint8_t writebuf[512];
@@ -36,20 +44,18 @@ int main(void) {
   int offset = 0;
   int len = 0;
 
-  tock_timer_t timer;
-  timer_every(2000, timer_cb, NULL, &timer);
-
   while(1) {
-    yield_for(&timer_interval);
-    timer_interval = false;
+    //Wait for interrupt
+    yield_for(&gpio_interrupt);
+    gpio_interrupt= false;
 
     // take accelerometer measurements
     for (unsigned ii = 0; ii < num_measurements; ii++) {
       unsigned accel_mag = ninedof_read_accel_mag();
-      printf("accel square = %u\n", accel_mag);
-      printf("********************\n");
+      //printf("accel square = %u\n", accel_mag);
+      //printf("********************\n");
       accel_mags[ii] = accel_mag + g;
-      delay_ms(2000);
+      delay_ms(100);
     }
 
     // windowing/thresholding
@@ -69,5 +75,7 @@ int main(void) {
       printf("\tERROR calling write\n");
       return ret;
     }
+    gpio_enable_interrupt(0, Change);
+
   }
 }

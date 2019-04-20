@@ -3,6 +3,7 @@
 
 #include <adc.h>
 #include <timer.h>
+#include <clock.h>
 
 #include <ieee802154.h>
 #include <udp.h>
@@ -22,7 +23,7 @@ static void timer_cb (__attribute__ ((unused)) int arg0,
 
 const uint32_t FREQS[7] = {25,100,500,1000,2000,5000,10000};
 
-#define ADC_SAMPLES 1000
+#define ADC_SAMPLES 4000
 static uint16_t adc_buffer[ADC_SAMPLES];
 int main(void) {
   if (DEBUG) {
@@ -50,7 +51,7 @@ int main(void) {
   int bind_return = udp_bind(&handle, &addr, BUF_BIND_CFG);
 
   if (bind_return < 0) {
-    printf("Failed to bind to port: failure=%d\n", bind_return);
+    //printf("Failed to bind to port: failure=%d\n", bind_return);
     return -1;
   } else if (DEBUG) {
     printf("Done binding. \n");
@@ -67,9 +68,10 @@ int main(void) {
   uint16_t length = ADC_SAMPLES;
   uint16_t buffer_idx = 0;
   unsigned num_averages = 1;
-  uint16_t avg_buffer[num_averages];
+  uint16_t avg_buffer[25];
   int fft_buf[16];
   int fft_mag[8];
+  //clock_set(RCFAST4M);
   while (1) {
     /*channels_done = 0;
     for(int i=0; i<7; i++) {
@@ -83,7 +85,7 @@ int main(void) {
     }
     int err = adc_sample_buffer_sync(0, 31500, adc_buffer, length);
     if (err < 0) {
-      printf("Error sampling ADC: %d\n", err);
+      //printf("Error sampling ADC: %d\n", err);
     } else {
       if (DEBUG) {
         printf("first sample: %d\n", adc_buffer[0]);
@@ -111,7 +113,7 @@ int main(void) {
         fft_buf[i % 16] = adc_buffer[i]; // Copy needed bc fft alg I found is int not uint16
       }
       res += fft(fft_buf, fft_mag);
-      if (DEBUG) {
+      if (0) {
         int j;
         printf("fft mags: ");
         for (j=0; j<8; j++) {
@@ -122,14 +124,10 @@ int main(void) {
     }
     
     int l;
-    for (l=0; l<150000; l++) {
+    for (l=0; l<70000; l++) {
       k = k+1 - i;
       i = k;
     }
-
-    //printf("k: %d\n", k);
-    //printf("res: %d\n", res);
-
 
     // End computation
 
@@ -141,16 +139,20 @@ int main(void) {
     // Send list of averages in a UDP packet
     int max_tx_len = udp_get_max_tx_len();
     int payload_len = num_averages*sizeof(uint16_t);
-    payload_len = 129;  // tmp to extend packet size to multiple frames
+    payload_len = 50;  // tmp to extend packet size to multiple frames
     if (payload_len > (int)sizeof(packet)){
         payload_len = sizeof(packet);
     }
 
     memcpy(packet, &avg_buffer, payload_len);
+    int v;
+    for(v=0; v < payload_len; v++) {
+      packet[v] = 0; //TODO REMOVE ME
+    }
 
     if (payload_len > max_tx_len) {
-      printf("Cannot send packets longer than %d bytes without changing"
-             " constants in kernel\n", max_tx_len);
+      //printf("Cannot send packets longer than %d bytes without changing"
+       //      " constants in kernel\n", max_tx_len);
       return 0;
     }
     if (DEBUG) {
@@ -164,7 +166,7 @@ int main(void) {
           printf("Packet sent.\n\n");
         }
         //timer_cancel(&timer);
-        delay_ms(2000); //So that individual runs are visible on scope
+        delay_ms(3000); //So that individual runs are visible on scope
         timer_every(500, timer_cb, NULL, &timer);
         break;
       default:
@@ -172,7 +174,7 @@ int main(void) {
           printf("Error sending packet %d\n\n", result);
         }
         //timer_cancel(&timer);
-        delay_ms(2000); //So that individual runs are visible on scope
+        delay_ms(3000); //So that individual runs are visible on scope
         timer_every(500, timer_cb, NULL, &timer);
         break;
     }

@@ -35,46 +35,48 @@ int main(void) {
   gpio_enable_input(0, PullDown);
   gpio_enable_interrupt(0, Change);
 
-  unsigned num_measurements = 10;
+  unsigned num_measurements = 5;
   double accel_mags[num_measurements];
 
-  uint8_t writebuf[512];
+  uint8_t writebuf[4];
   size_t size = 512;
   int ret = nonvolatile_storage_internal_write_buffer(writebuf, size);
   int offset = 0;
-  int len = 0;
+  int len = sizeof(double)*num_measurements;
 
   while(1) {
     //Wait for interrupt
     yield_for(&gpio_interrupt);
-    gpio_interrupt= false;
+    gpio_interrupt = false;
 
     // take accelerometer measurements
-    for (unsigned ii = 0; ii < num_measurements; ii++) {
+    unsigned int ii;
+    for (ii = 0; ii < num_measurements; ii++) {
       unsigned accel_mag = ninedof_read_accel_mag();
-      //printf("accel square = %u\n", accel_mag);
+      printf("accel square = %x\n", accel_mag);
       //printf("********************\n");
       accel_mags[ii] = accel_mag + g;
-      delay_ms(100);
+      //delay_ms(100);
     }
 
     // windowing/thresholding
-    unsigned steps = 0;
-    for (unsigned ii = 0; ii < num_measurements - 1; ii++) {
-      if (accel_mags[ii] < 0 && accel_mags[ii + 1] > 0) {
-        // step occurred
-        steps++;
-      }
-    }
+    //unsigned steps = 0;
+    //for (unsigned ii = 0; ii < num_measurements - 1; ii++) {
+    //  if (accel_mags[ii] < 0 && accel_mags[ii + 1] > 0) {
+    //    // step occurred
+    //    steps++;
+    //  }
+    //}
+    //printf("%u steps occurred.\n", steps);
 
-    printf("%u steps occurred.\n", steps);
-
+    memcpy(writebuf, accel_mags, len);
     // write to flash
     ret  = nonvolatile_storage_internal_write(offset, len);
     if (ret != 0) {
       printf("\tERROR calling write\n");
       return ret;
     }
+    offset += len;
     gpio_enable_interrupt(0, Change);
 
   }

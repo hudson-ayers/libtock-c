@@ -10,7 +10,7 @@
 #define COS6PI_P_SIN6PI 167
 #define COS6PI_M_SIN6PI -56
 #define OneTwentyEight 128
-int fft(int inarr[16],int mags[8] ) {
+void fft(int inarr[16],int mags[8] ) {
   int atemp, temp, temp0, temp1, temp2, temp3, temp4, temp5, temp6, temp7, temp8;
   int temp9,temp10,temp11,temp12,temp13,temp14,temp15;
   int outarr[16]; temp0=inarr[0]+inarr[8];
@@ -89,7 +89,7 @@ int fft(int inarr[16],int mags[8] ) {
   mags[5] = findRoot4(outarr[3], outarr[11]);
   mags[6] = findRoot4(outarr[2], outarr[10]);
   mags[7] = findRoot4(outarr[1], outarr[9]);
-  return mags[0] + mags[1] + mags[2] + mags[3] + mags[4] + mags[5] + mags[6] + mags[7];}
+  }
 int findRoot4(int x, int y)
 {
   if(x < 0)x = -x;

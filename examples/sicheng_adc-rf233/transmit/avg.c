@@ -3,7 +3,9 @@
  * Average *
  *---------*/
 
-void compute_averages(uint16_t *adc_buffer, uint16_t length, uint16_t *avg_buffer, unsigned num_averages, uint16_t *buffer_idx) {
+#include "avg.h"
+
+void compute_averages(uint16_t *adc_buffer, uint16_t length, uint16_t *avg_buffer, uint16_t *buffer_idx) {
     uint16_t sum = 0;
     for (unsigned i=0; i<length; i++) {
         sum += adc_buffer[i];

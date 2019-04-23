@@ -8,7 +8,13 @@
 
 #include <ieee802154.h>
 #include <udp.h>
+#include "avg.h"
+#include "caesar_cypher.h"
+#include "conv1d.h"
 #include "fft.h"
+#include "quicksort.h"
+#include "rsa.h"
+
 #define DEBUG 0
 
 static unsigned char BUF_BIND_CFG[2 * sizeof(sock_addr_t)];
@@ -97,11 +103,7 @@ int main(void) {
      * Average *
      *---------*/
     
-    uint16_t sum = 0;
-    for (unsigned i=0; i<length; i++) {
-        sum += adc_buffer[i];
-    }
-    avg_buffer[buffer_idx++] = sum/length;
+    compute_averages(adc_buffer, length, avg_buffer, &buffer_idx); 
     if (DEBUG) {
       printf("Average of last %d samples: %d\n", ADC_SAMPLES, avg_buffer[buffer_idx - 1]);
     }
@@ -134,7 +136,8 @@ int main(void) {
      *--------------------------*/
 
     char encrypted_adc_buffer[ADC_SAMPLES];
-    compute_caesar_cypher(adc_buffer, ADC_SAMPLES, &encrypted_adc_buffer); 
+    char *cc_buf_ptr = (char *)encrypted_adc_buffer; 
+    compute_caesar_cypher(adc_buffer, ADC_SAMPLES, cc_buf_ptr); 
     
     /*----------------*
      * RSA Encryption *
@@ -148,7 +151,17 @@ int main(void) {
 
     unsigned kernel_length = 5;
     uint16_t result_1dconv[ADC_SAMPLES + kernel_length - 1]; 
-    compute_1dconv(adc_buffer, ADC_SAMPLES, &result_1dconv); 
+    uint16_t *conv_buf_ptr = (uint16_t *)result_1dconv; 
+    compute_1dconv(adc_buffer, ADC_SAMPLES, conv_buf_ptr); 
+    
+    /*-----------*
+     * QuickSort *
+     *-----------*/
+
+    uint16_t adc_buffer_srtd[ADC_SAMPLES]; 
+    memcpy(adc_buffer, adc_buffer_srtd, ADC_SAMPLES * sizeof(uint16_t)); 
+    quickSort(adc_buffer_srtd, 0, ADC_SAMPLES-1); 
+    printArray(adc_buffer_srtd, ADC_SAMPLES); 
     
     /*---------*/
     

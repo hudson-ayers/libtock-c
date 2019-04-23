@@ -1,5 +1,8 @@
 // RSA
 
+#include <math.h>
+#include "rsa.h"
+
 #define ADC_SAMPLES 1000
 
 int x_rsa, y_rsa, n_rsa, t_rsa, flag_rsa;
@@ -25,7 +28,7 @@ long int cd(long int a) {
 }
 
 // function to generate encryption key
-void encryption_key() {
+void encryption_key(void) {
     int k = 0; 
     for (int i = 2; i < t_rsa; i++) {
         if (t_rsa % i == 0)
@@ -45,7 +48,7 @@ void encryption_key() {
 }
 
 // function to encrypt the message
-void encrypt() {
+void encrypt(void) {
     long int pt, ct, key = e_rsa[0], k, len;
     int i = 0; 
     len = ADC_SAMPLES;
@@ -62,14 +65,14 @@ void encrypt() {
         en_rsa[i] = ct; 
         i++;
     }
-    en_rsa[i] = -1;
+    //en_rsa[i] = -1; // TODO RSA Encryption length may be too long
 }
 
 void compute_rsa(uint16_t *adc_buffer, unsigned length) {
   x_rsa = 7; // arbitrary prime
   y_rsa = 13; // arbitrary prime 
 
-  for (int i = 0; i < length; i++)
+  for (unsigned i = 0; i < length; i++)
       m_rsa[i] = adc_buffer[i];
   n_rsa = x_rsa * y_rsa;
   t_rsa = (x_rsa-1) * (y_rsa-1);

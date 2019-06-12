@@ -2,7 +2,7 @@
 #include <timer.h>
 #include <internal/nonvolatile_storage.h>
 #include <adc.h>
-#include <clock.h>
+#include "clock.h"
 #include "ninedof.h"
 #include "gpio.h"
 
@@ -21,7 +21,7 @@ static void adc_cb(int callback_type,
                     void* callback_args) {
     adc_data_t* result = (adc_data_t*)callback_args;
 
-        gpio_toggle(0);
+    gpio_toggle(0);
   switch (callback_type) {
     case SingleSample:
       result->error   = TOCK_SUCCESS;
@@ -65,7 +65,6 @@ struct ninedof_data {
 };
 static struct ninedof_data res = { .fired = false };
 static void ninedof_cb(int x, int y, int z, void* ud) {
-        gpio_toggle(1);
   struct ninedof_data* result = (struct ninedof_data*) ud;
   result->x     = x;
   result->y     = y;
@@ -73,6 +72,7 @@ static void ninedof_cb(int x, int y, int z, void* ud) {
   result->fired = true;
 }
 
+int buflen = 512;
 uint8_t readbuf[512];
 uint8_t writebuf[512];
 bool read_done = false;
@@ -101,12 +101,25 @@ static void timer_cb (__attribute__ ((unused)) int arg0,
 }
 
 
+static bool gpio_interrupt;
+static void gpio_cb (int pin_num,
+                     int pin_val,
+                     __attribute__ ((unused)) int unused,
+                     __attribute__ ((unused)) void* userdata) {
+
+  //gpio_toggle(1);
+  gpio_disable_interrupt(0);
+  //gpio_interrupt = true;
+}
+
 int main(void) {
 
-    gpio_enable_output(0);
+    //gpio_enable_output(0);
     gpio_enable_output(1);
     gpio_enable_output(2);
-    printf("Begin test\n");
+    //printf("Begin test\n");
+    //gpio_interrupt_callback(gpio_cb, NULL);
+    //gpio_enable_input(0, PullDown);
     
     // Setup ADC
     uint8_t channel = 0;
@@ -118,59 +131,48 @@ int main(void) {
     adc_set_buffer(buf, length);
 
     // Setup I2C
-    ninedof_subscribe(ninedof_cb, (void*) &res);
+    //ninedof_subscribe(ninedof_cb, (void*) &res);
 
     // Setup flash
-    int ret = nonvolatile_storage_internal_read_buffer(readbuf, 512);
-    if (ret != 0) printf("ERROR setting read buffer\n");
-    ret = nonvolatile_storage_internal_read_done_subscribe(read_done_cb, NULL);
-    if (ret != 0) printf("ERROR setting read done callback\n");
-    ret = nonvolatile_storage_internal_write_buffer(writebuf, 512);
+    int ret = nonvolatile_storage_internal_write_buffer(writebuf, buflen);
     if (ret != 0) printf("ERROR setting write buffer\n");
     ret = nonvolatile_storage_internal_write_done_subscribe(write_done_cb, NULL);
     if (ret != 0) printf("ERROR setting write done callback\n");
 
     // Timer 
     tock_timer_t timer;
-    timer_every(500, timer_cb, NULL, &timer);
+    timer_every(1000, timer_cb, NULL, &timer);
 
     //clock_set(DFLL);
     while(1){
-        gpio_toggle(0);
+        gpio_toggle(1);
         result.fired = false;
         adc_buffered_sample(channel, freq);
-        gpio_toggle(1);
-        res.fired = false;
-        ninedof_start_accel_reading();
 
+        //change_clock();
         yield_for(&result.fired);
-        yield_for(&res.fired);
+        gpio_toggle(2);
         adc_stop_sampling();
 
         // Output adc results
-        //printf("Sample taken\n");
-        gpio_toggle(2);
         for (uint32_t i = 0; i < length; i++) {
             // convert to millivolts
             writebuf[i] = (buf[i] * 3300) / 4095;
         }
         writebuf[length] = res.x + res.y + res.z;
         
-        gpio_toggle(0);
         // Write to flash
-        read_done = false;
-        ret = nonvolatile_storage_internal_read(0, 512);
-        if (ret != 0) printf("ERROR calling read\n");
-        yield_for(&read_done);
-        gpio_toggle(2);
-
         write_done = false;
-        ret  = nonvolatile_storage_internal_write(0, 512);
+        ret  = nonvolatile_storage_internal_write(0, length);
         if (ret != 0) printf("ERROR calling write\n");
+        gpio_toggle(1);
+        printf("DONE\n");
+        //change_clock();
         yield_for(&write_done);
         gpio_toggle(2);
 
         yield_for(&timer_done);
+        gpio_toggle(1);
         timer_done = false;
     }
 

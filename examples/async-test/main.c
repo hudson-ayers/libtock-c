@@ -21,7 +21,6 @@ static void adc_cb(int callback_type,
                     void* callback_args) {
     adc_data_t* result = (adc_data_t*)callback_args;
 
-    gpio_toggle(0);
   switch (callback_type) {
     case SingleSample:
       result->error   = TOCK_SUCCESS;
@@ -114,7 +113,7 @@ static void gpio_cb (int pin_num,
 
 int main(void) {
 
-    //gpio_enable_output(0);
+    gpio_enable_output(0);
     gpio_enable_output(1);
     gpio_enable_output(2);
     //printf("Begin test\n");
@@ -145,13 +144,13 @@ int main(void) {
 
     //clock_set(DFLL);
     while(1){
-        gpio_toggle(1);
+        gpio_toggle(0);
         result.fired = false;
         adc_buffered_sample(channel, freq);
 
-        //change_clock();
+        change_clock();
         yield_for(&result.fired);
-        gpio_toggle(2);
+        gpio_toggle(1);
         adc_stop_sampling();
 
         // Output adc results
@@ -166,13 +165,12 @@ int main(void) {
         ret  = nonvolatile_storage_internal_write(0, length);
         if (ret != 0) printf("ERROR calling write\n");
         gpio_toggle(1);
-        printf("DONE\n");
-        //change_clock();
+        change_clock();
         yield_for(&write_done);
         gpio_toggle(2);
 
         yield_for(&timer_done);
-        gpio_toggle(1);
+        gpio_toggle(2);
         timer_done = false;
     }
 

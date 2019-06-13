@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "tock.h"
+#include "clock.h"
 
 typedef struct {
   subscribe_cb *cb;
@@ -41,6 +42,7 @@ void yield_for(bool *cond) {
 }
 
 void yield(void) {
+  change_clock();
   if (task_cur != task_last) {
     tock_task_t task = task_queue[task_cur];
     task_cur = (task_cur + 1) % TASK_QUEUE_SIZE;

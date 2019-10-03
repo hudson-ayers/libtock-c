@@ -123,7 +123,7 @@ int main(void) {
     // Setup ADC
     uint8_t channel = 0;
     uint32_t freq = 31500;
-    uint32_t length = 100;
+    uint32_t length = 512;
     uint16_t buf[length];
     adc_data_t result = {0};
     adc_set_callback(adc_cb, (void*) &result);
@@ -144,33 +144,34 @@ int main(void) {
 
     //clock_set(DFLL);
     while(1){
-        gpio_toggle(0);
+        //gpio_toggle(0);
         result.fired = false;
         adc_buffered_sample(channel, freq);
 
-        change_clock();
         yield_for(&result.fired);
-        gpio_toggle(1);
+        //gpio_toggle(1);
         adc_stop_sampling();
 
         // Output adc results
-        for (uint32_t i = 0; i < length; i++) {
-            // convert to millivolts
-            writebuf[i] = (buf[i] * 3300) / 4095;
+        for(uint32_t j =0; j< 1; j++) {
+            for (uint32_t i = 0; i < length; i++) {
+                // convert to millivolts
+                writebuf[i] = (buf[i] * 3300) / 4095;
+            }
         }
-        writebuf[length] = res.x + res.y + res.z;
+        //writebuf[length] = res.x + res.y + res.z;
         
         // Write to flash
-        write_done = false;
-        ret  = nonvolatile_storage_internal_write(0, length);
-        if (ret != 0) printf("ERROR calling write\n");
-        gpio_toggle(1);
-        change_clock();
-        yield_for(&write_done);
-        gpio_toggle(2);
+        //write_done = false;
+        //ret  = nonvolatile_storage_internal_write(0, length);
+        //if (ret != 0) printf("ERROR calling write\n");
+        //gpio_toggle(1);
+        //change_clock();
+        //yield_for(&write_done);
+        //gpio_toggle(2);
 
         yield_for(&timer_done);
-        gpio_toggle(2);
+        //gpio_toggle(2);
         timer_done = false;
     }
 

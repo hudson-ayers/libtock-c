@@ -121,12 +121,12 @@ int main(void) {
   };
 
   tock_timer_t timer;
-  timer_every(1000, timer_cb, NULL, &timer);
+  timer_every(2000, timer_cb, NULL, &timer);
 
   // Setup ADC
   uint8_t channel = 0;
   uint32_t freq = 31500;
-  uint16_t length = 512;
+  uint16_t length = ADC_SAMPLES;
   adc_data_t result = {0};
   adc_set_callback(adc_cb, (void*) &result);
   adc_set_buffer(adc_buffer, length);
@@ -139,18 +139,15 @@ int main(void) {
   int fft_mag[8];
   float avg_fft_mag[8]; //For each frequency bin, keep moving average of magnitude
 
-  clock_set(DFLL);
+  //clock_set(DFLL);
   while (1) {
-    yield_for(&timer_called);
-    gpio_toggle(0);
-    timer_cancel(&timer);
-    timer_called = false;
     if (DEBUG) {
       printf("About to sample...\n");
     }
 
-    result.fired = false;
+    //clock_set(RCFAST4M);
     gpio_toggle(1);
+    result.fired = false;
     int err = adc_buffered_sample(channel, freq);
     if (err < 0) {
       printf("Error sampling ADC: %d\n", err);
@@ -160,9 +157,10 @@ int main(void) {
       }
     }
     yield_for(&result.fired);
+    //clock_set(DFLL);
+    gpio_toggle(1);
     adc_stop_sampling();
 
-    gpio_toggle(2);
 
     //uint32_t before = alarm_read();
     // Begin computation of average
@@ -204,7 +202,6 @@ int main(void) {
     if (buffer_idx < num_averages)
         continue;
     buffer_idx = 0;
-    gpio_toggle(2);
 
     // Payload: 6 averaged fft magnitudes + all sample average
     unsigned int max_tx_len = udp_get_max_tx_len();
@@ -225,25 +222,26 @@ int main(void) {
     if (DEBUG) {
       printf("Sending packet (length %d) --> \n", payload_len);
     }
+    //clock_set(RCFAST4M);
     gpio_toggle(1);
     ssize_t result = udp_send_to(packet, payload_len, &destination);
-    gpio_toggle(0);
+    //clock_set(DFLL);
+    gpio_toggle(1);
 
     switch (result) {
       case TOCK_SUCCESS:
         if (DEBUG) {
           printf("Packet sent.\n\n");
         }
-        delay_ms(1000); //So that individual runs are visible on scope
-        timer_every(500, timer_cb, NULL, &timer);
         break;
       default:
         if (DEBUG) {
           printf("Error sending packet %d\n\n", result);
         }
-        delay_ms(1000); //So that individual runs are visible on scope
-        timer_every(500, timer_cb, NULL, &timer);
         break;
     }
+
+    yield_for(&timer_called);
+    timer_called = false;
   }
 }

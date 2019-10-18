@@ -22,8 +22,6 @@ typedef enum {
 
 int clock_set(Clock_List_t clock);
 
-int change_clock();
-
 #ifdef __cplusplus
 }
 #endif

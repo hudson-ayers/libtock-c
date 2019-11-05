@@ -148,7 +148,7 @@ int main(void) {
   int fft_mag[8];
   float avg_fft_mag[8]; //For each frequency bin, keep moving average of magnitude
 
-  clock_set(RCFAST4M);
+  //clock_set(DFLL);
   while (1) {
 
     if (DEBUG) {
@@ -231,10 +231,8 @@ int main(void) {
       printf("Sending packet (length %d) --> \n", payload_len);
     }
     //clock_set(RCFAST4M);
-    gpio_toggle(1);
     ssize_t res = udp_send_to(packet, payload_len, &destination);
     //clock_set(DFLL);
-    gpio_toggle(1);
 
     switch (res) {
       case TOCK_SUCCESS:

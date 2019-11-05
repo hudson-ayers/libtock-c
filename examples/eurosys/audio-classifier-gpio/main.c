@@ -2,7 +2,6 @@
 #include <stdio.h>
 
 #include <adc.h>
-#include <timer.h>
 #include <clock.h>
 
 #include <ieee802154.h>
@@ -12,6 +11,7 @@
 #include "gpio.h"
 #include "clock.h"
 
+
 typedef struct {
   bool fired;
   uint8_t channel;
@@ -20,6 +20,20 @@ typedef struct {
   uint16_t* buffer;
   int error;
 } adc_data_t;
+
+static bool gpio_interrupt;
+
+static void gpio_cb (__attribute__ ((unused)) int pin_num,
+                     __attribute__ ((unused)) int pin_val,
+                     __attribute__ ((unused)) int unused,
+                     __attribute__ ((unused)) void* userdata) {
+
+  gpio_disable_interrupt(0);
+  if (DEBUG) {
+    printf("GPIO toggled. \n");
+  }
+  gpio_interrupt = true;
+}
 
 static void adc_cb(int callback_type,
                     int arg1,
@@ -63,13 +77,6 @@ static void adc_cb(int callback_type,
 }
 
 static unsigned char BUF_BIND_CFG[2 * sizeof(sock_addr_t)];
-static bool timer_called;
-static void timer_cb (__attribute__ ((unused)) int arg0,
-                      __attribute__ ((unused)) int arg1,
-                      __attribute__ ((unused)) int arg2,
-                      __attribute__ ((unused)) void* userdata) {
-    timer_called = true;
-}
 
 float movingAvg(float prev_avg, int num_samples, int new_val);
 float movingAvg(float prev_avg, int num_samples, int new_val)
@@ -80,9 +87,10 @@ float movingAvg(float prev_avg, int num_samples, int new_val)
 #define ADC_SAMPLES 4000
 static uint16_t adc_buffer[ADC_SAMPLES];
 int main(void) {
-  gpio_enable_output(0);
-  gpio_enable_output(1);
-  gpio_enable_output(2);
+  //clock_set(DFLL);
+  gpio_interrupt_callback(gpio_cb, NULL);
+  gpio_enable_input(0, PullDown);
+  gpio_enable_interrupt(0, Change);
 
   if (DEBUG) {
     printf("Starting Power Clocks Test App.\n");
@@ -120,8 +128,6 @@ int main(void) {
     16123
   };
 
-  tock_timer_t timer;
-  timer_every(2000, timer_cb, NULL, &timer);
 
   // Setup ADC
   uint8_t channel = 0;
@@ -140,13 +146,16 @@ int main(void) {
   float avg_fft_mag[8]; //For each frequency bin, keep moving average of magnitude
 
   //clock_set(DFLL);
+  gpio_enable_interrupt(0, Change);
   while (1) {
+    gpio_interrupt = false;
+    yield_for(&gpio_interrupt);
+
     if (DEBUG) {
       printf("About to sample...\n");
     }
 
     //clock_set(RCFAST4M);
-    gpio_toggle(1);
     result.fired = false;
     int err = adc_buffered_sample(channel, freq);
     if (err < 0) {
@@ -158,7 +167,6 @@ int main(void) {
     }
     yield_for(&result.fired);
     //clock_set(DFLL);
-    gpio_toggle(1);
     adc_stop_sampling();
 
 
@@ -166,17 +174,17 @@ int main(void) {
     // Begin computation of average
     // Basic Average code (proxy for magnitude of signal)
     int i;
-    /*
+
     long sum = 0;
     for (i=0; i<length; i++) {
-        //adc_buffer[i] = adc_buffer[i] * 2 - 200; // Mock conversion to real-world units
+        adc_buffer[i] = adc_buffer[i] * 3 - 200; // Mock conversion to real-world units
         sum += adc_buffer[i];
     }
     avg_buffer[buffer_idx++] = ((double)sum)/length;
     if (DEBUG) {
       printf("Average of last %d samples: %f\n", ADC_SAMPLES, avg_buffer[buffer_idx - 1]);
-    }*/
-    buffer_idx++;
+    }
+    //buffer_idx++;
 
     // Begin fft computation on sets of 16 samples
     int k;
@@ -187,7 +195,7 @@ int main(void) {
       fft(fft_buf, fft_mag);
       int l;
       // For each returned fft magnitude, update the moving average for that magnitude bin
-      for (l=3; l<8; l++) {
+      for (l=1; l<8; l++) {
         avg_fft_mag[l] = movingAvg(avg_fft_mag[l], k, fft_mag[l]);
       }
     }
@@ -223,12 +231,10 @@ int main(void) {
       printf("Sending packet (length %d) --> \n", payload_len);
     }
     //clock_set(RCFAST4M);
-    gpio_toggle(1);
-    ssize_t result = udp_send_to(packet, payload_len, &destination);
+    ssize_t res = udp_send_to(packet, payload_len, &destination);
     //clock_set(DFLL);
-    gpio_toggle(1);
 
-    switch (result) {
+    switch (res) {
       case TOCK_SUCCESS:
         if (DEBUG) {
           printf("Packet sent.\n\n");
@@ -236,12 +242,10 @@ int main(void) {
         break;
       default:
         if (DEBUG) {
-          printf("Error sending packet %d\n\n", result);
+          printf("Error sending packet %d\n\n", res);
         }
         break;
     }
 
-    yield_for(&timer_called);
-    timer_called = false;
   }
 }

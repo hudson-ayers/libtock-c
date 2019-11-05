@@ -7,59 +7,57 @@
 #include <unistd.h>
 
 #include <console.h>
-#include <timer.h>
 #include <tock.h>
-#include "gpio.h"
-#include "clock.h"
-#include "math.h"
-
 #include <internal/nonvolatile_storage.h>
 #include "ninedof.h"
+#include <led.h>
+#include <clock.h>
+#include <timer.h>
+#include <gpio.h>
 
-static bool gpio_interrupt;
-
-static void gpio_cb (int pin_num,
-                     int pin_val,
-                     __attribute__ ((unused)) int unused,
-                     __attribute__ ((unused)) void* userdata) {
-
-  //gpio_toggle(1);
-  gpio_disable_interrupt(0);
-  gpio_interrupt = true;
-}
+#define DEBUG 0
 
 const double g = -9.8;
 
+static bool timer_called;
+static void timer_cb (__attribute__ ((unused)) int arg0,
+                      __attribute__ ((unused)) int arg1,
+                      __attribute__ ((unused)) int arg2,
+                      __attribute__ ((unused)) void* userdata) {
+    timer_called = true;
+}
+
 int main(void) {
-  printf("Movement tracker\n");
+  gpio_enable_output(1);
 
-  // GPIO input from proximity sensor or door open/close sensor
-  gpio_interrupt_callback(gpio_cb, NULL);
-  gpio_enable_input(0, PullDown);
-  gpio_enable_interrupt(0, Change);
-  //gpio_enable_output(1);
-  //gpio_enable_output(2);
+  tock_timer_t timer;
+  timer_every(1900, timer_cb, NULL, &timer);
 
+  /* Begin accel / flash enable code */
   unsigned num_measurements = 5;
   double accel_vals[num_measurements*3];
 
-  int mag_size = sizeof(double); 
+  int mag_size = sizeof(double);
   int len = mag_size*num_measurements;
   uint8_t writebuf[len];
   int ret = nonvolatile_storage_internal_write_buffer(writebuf, len);
   int offset = 0;
+  /* End accel / flash enable code */
 
+  //clock_set(DFLL);
   while(1) {
-    //Wait for interrupt
-    yield_for(&gpio_interrupt);
-    gpio_interrupt = false;
+    //clock_set(RCSYS);
+    yield_for(&timer_called);
+    timer_called = false;
 
     // take accelerometer measurements
+    //clock_set(RCFAST4M);
     unsigned int ii;
     int x, y, z;
-    clock_set(RCFAST4M);
+    if (DEBUG) {
+      printf("About to read accel.\n");
+    }
     for (ii = 0; ii < num_measurements; ii++) {
-      //gpio_toggle(2);
       int err = ninedof_read_acceleration_sync(&x, &y, &z);
       if (err < 0) {
         printf("Ninedof error\n");
@@ -67,11 +65,9 @@ int main(void) {
       accel_vals[ii*3] = x;
       accel_vals[ii*3+1] = y;
       accel_vals[ii*3+2] = z;
-      //delay_ms(100);
     }
-    clock_set(RC80M);
+    //clock_set(RC80M);
 
-    //gpio_toggle(1);
     // calculate acceleration magnitudes
     for (ii = 0; ii < num_measurements; ii++) {
         x = accel_vals[ii*3];
@@ -80,18 +76,21 @@ int main(void) {
         double mag = sqrt(x*x + y*y + z*z);
         memcpy(writebuf+mag_size*ii, &mag, mag_size);
     }
-    
-    //gpio_toggle(2);
+
+    if (DEBUG) {
+      printf("About to write flash.\n");
+    }
     // write to flash
+    //clock_set(RC1M);
     ret  = nonvolatile_storage_internal_write(offset, len);
     if (ret != 0) {
       printf("\tERROR calling write\n");
       return ret;
     }
-    //gpio_toggle(1);
-    //offset += len;
-    gpio_enable_interrupt(0, Change);
-    //gpio_toggle(2);
-
+    if (DEBUG) {
+      printf("Done writing to flash.\n");
+    }
   }
+
+  return 0;
 }

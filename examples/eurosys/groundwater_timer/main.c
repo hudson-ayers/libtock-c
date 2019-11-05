@@ -34,12 +34,28 @@ static void gpio_cb (__attribute__ ((unused)) int pin_num,
 
 int main(void) {
   //clock_set(RCFAST4M);
-  /* Begin gpio enable code */
+  /* Begin button enable code */
+  /*
+  button_subscribe(button_callback, NULL);
+  int count = button_count();
+  if (count < 0) {
+    printf("Error detecting buttons: %i\n", count);
+    return -1;
+  } else if (count < 1) {
+    printf("No buttons on this board!\n");
+    return -2;
+  }
+  button_enable_interrupt(0); */
+  /* End button enable code */
+  /* Begin gpio enable code instead of button */
   gpio_interrupt_callback(gpio_cb, NULL);
   gpio_enable_input(0, PullDown);
   gpio_enable_interrupt(0, Change);
   gpio_enable_output(1);
   /* end gpio enable code */
+
+
+
 
   /* Begin accel / flash enable code */
   unsigned num_measurements = 5;
@@ -53,9 +69,9 @@ int main(void) {
   /* End accel / flash enable code */
 
   /* enable interrupt here to run *once*, emulating the second app being on a timer but firing at same time as first app */
+  gpio_enable_interrupt(0, Change);
   //clock_set(DFLL);
   while(1) {
-    gpio_enable_interrupt(0, Change);
     gpio_interrupt = false;
     //clock_set(RCSYS);
     yield_for(&gpio_interrupt);

@@ -18,7 +18,7 @@ static void tsl2561_cb(__attribute__ ((unused)) int callback_type,
   data->fired = true;
 }
 
-int tsl2561_set_callback (subscribe_cb callback, void* callback_args) {
+int tsl2561_set_callback (subscribe_upcall callback, void* callback_args) {
   subscribe_return_t sval = subscribe2(DRIVER_NUM_TSL2561, 0, callback, callback_args);
   if (sval.success) {
     return 0;

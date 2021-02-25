@@ -71,7 +71,7 @@ putnstr_fail_buf_alloc:
   return ret;
 }
 
-int putnstr_async(const char *str, size_t len, subscribe_cb cb, void* userdata) {
+int putnstr_async(const char *str, size_t len, subscribe_upcall cb, void* userdata) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-qual"
   // Currently, allow gives RW access, but we should have a richer set of
@@ -101,7 +101,7 @@ int putnstr_async(const char *str, size_t len, subscribe_cb cb, void* userdata) 
   }
 }
 
-int getnstr_async(char *buf, size_t len, subscribe_cb cb, void* userdata) {
+int getnstr_async(char *buf, size_t len, subscribe_upcall cb, void* userdata) {
   allow_rw_return_t rw = allow_readwrite(DRIVER_NUM_CONSOLE, 1, buf, len);
   if (rw.success == 0) {
     return tock_error_to_rcode(rw.error);
@@ -163,13 +163,12 @@ int getch(void) {
 }
 
 int getnstr_abort(void) {
-  syscall_return_t com = command2(DRIVER_NUM_CONSOLE, 3, 0, 0);
-  if (com.type == TOCK_SYSCALL_SUCCESS) {
+  syscall_return_t sval = command2(DRIVER_NUM_CONSOLE, 3, 0, 0);
+  if (sval.type == TOCK_SYSCALL_SUCCESS) {
     return TOCK_SUCCESS;
-  } else if (com.type > TOCK_SYSCALL_SUCCESS) {
-    // Returned an incorrect success code
+  } else if (sval.type == TOCK_SYSCALL_FAILURE) {
     return TOCK_FAIL;
   } else {
-    return tock_error_to_rcode(com.data[0]);
+    return TOCK_EBADRVAL;
   }
 }
